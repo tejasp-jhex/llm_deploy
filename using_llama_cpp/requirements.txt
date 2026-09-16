@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+langserve
+langchain-openai
+sse_starlette
