@@ -1,0 +1,66 @@
+version: '3.8'
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  prometheus:
+    image: ubuntu/prometheus:3.14-26.04_stable
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    volumes:
+      - prometheus-data:/prometheus
+    # This inline block writes the config without needing an external file
+    entrypoint:
+      - "/bin/sh"
+      - "-c"
+      - |
+        cat <<EOF > /etc/prometheus/prometheus.yml
+        global:
+          scrape_interval: 5s
+        scrape_configs:
+          - job_name: 'prometheus'
+            static_configs:
+              - targets: ['localhost:9090']
+          - job_name: 'node-exporter'
+            static_configs:
+              - targets: ['node-exporter:9100']
+          - job_name: 'llama-cpp'
+            static_configs:
+              - targets: ['host.docker.internal:8080'] # If running llama-server natively on your Windows host
+
+        EOF
+        /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+    # Removed pid: host and the Linux-specific mount flags
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+
+
+volumes:
+  prometheus-data:

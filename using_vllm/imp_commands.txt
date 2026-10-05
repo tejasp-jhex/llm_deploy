@@ -1,0 +1,46 @@
+chmod +x ./serve_model.sh && MAX_LEN=32768 GPU_UTIL=0.80 API_KEY=mysecret EXTRA_ARGS="--max-num-seqs 64" ./serve_model.sh
+
+
+vim setup_monitoring.sh
+chmod +x setup_monitoring.sh && GRAFANA_PASSWORD='tejas112' ./setup_monitoring.sh
+
+
+curl https://auzo1i6j6vftpo-8000.proxy.runpod.net/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer mysecret" \
+  -d '{
+    "model": "QuantTrio/Qwen3.5-9B-AWQ",
+    "messages": [
+      {"role": "system", "content": "You are a customer support agent. Help the user concisely."},
+      {"role": "user", "content": "How do I reset my password?"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512
+  }'
+
+
+  curl -N https://5gjompps4p2nfo-8000.proxy.runpod.net/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer mysecret" \
+  -d '{
+    "model": "QuantTrio/Qwen3.5-9B-AWQ",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "max_tokens": 256,
+    "stream": true
+  }'
+
+
+  curl https://auzo1i6j6vftpo-8000.proxy.runpod.net/health
+curl https://auzo1i6j6vftpo-8000.proxy.runpod.net/v1/models -H "Authorization: Bearer mysecret"
+
+
+chmod +x setup_system_metrics.sh && ./setup_system_metrics.sh
+
+
+Things to improve :-
+
+Put a gateway in front with per-client keys and rate limits, and keep vLLM's own key secret and known only to the gateway.
+Supervise every process and make startup automatic.
+Add alerts for down targets, high KV cache usage, queue growth and GPU memory.
+Run a second replica, or at least a fallback model/provider behind the gateway, so a single failure isn't an outage.
+Pin versions, load test to find a safe max-num-seqs and context length, and move the compile cache to /workspace.
